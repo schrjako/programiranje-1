@@ -21,6 +21,11 @@
  - : euro = Euro 0.4305
 [*----------------------------------------------------------------------------*)
 
+type dollar = Dollar of float
+type euro = Euro of float
+
+let dollar_to_euro = function | Dollar d -> Euro (d *. 0.861)
+let euro_to_dollar = function | Euro e -> Dollar (e /. 0.861)
 
 
 (*----------------------------------------------------------------------------*]
@@ -35,6 +40,18 @@
  - : currency = Pound 0.007
 [*----------------------------------------------------------------------------*)
 
+type currency =
+  | Yen of float
+  | Pound of float
+  | Scrwn of float
+  | Sfranc of float
+
+let to_funt =
+  function
+    | Yen y -> Pound (y /. 14285.714285714286)
+    | Pound f -> Pound (f)
+    | Scrwn c -> Pound (c /. 898238734.)
+    | Sfranc f -> Pound (f /. 1.5)
 
 
 (*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=*]
@@ -56,8 +73,17 @@
 
  Nato napišite testni primer, ki bi predstavljal "[5; true; false; 7]".
 [*----------------------------------------------------------------------------*)
+type ib =
+  | I of int
+  | B of bool
 
+(*type intbool_list = ib list*)
+type intbool_list =
+  | Prazen
+  | Il of int * intbool_list
+  | Bl of bool * intbool_list
 
+let primer = Il(5, Bl(true, Bl(false, Il(7, Prazen))))
 
 (*----------------------------------------------------------------------------*]
  Funkcija [intbool_map f_int f_bool ib_list] preslika vrednosti [ib_list] v nov
@@ -65,14 +91,29 @@
  oz. [f_bool].
 [*----------------------------------------------------------------------------*)
 
-let rec intbool_map = ()
+
+let rec intbool_reverse ib_list = 
+  let rec aux acc = function
+    | Prazen -> acc
+    | Il (i, tail) -> aux (Il(i, acc)) tail
+    | Bl (b, tail) -> aux (Bl(b, acc)) tail
+  in
+  aux Prazen ib_list
+
+let rec intbool_map f_int f_bool ib_list =
+  let rec aux acc = function
+    | Prazen -> intbool_reverse acc
+    | Il (i, tail) -> aux (Il(f_int i, acc)) tail
+    | Bl (b, tail) -> aux (Bl(f_bool b, acc)) tail
+  in
+  aux Prazen ib_list
 
 (*----------------------------------------------------------------------------*]
  Funkcija [intbool_reverse] obrne vrstni red elementov [intbool_list] seznama.
  Funkcija je repno rekurzivna.
 [*----------------------------------------------------------------------------*)
 
-let rec intbool_reverse = ()
+(* glej zgoraj *)
 
 (*----------------------------------------------------------------------------*]
  Funkcija [intbool_separate ib_list] loči vrednosti [ib_list] v par [list]
@@ -80,7 +121,13 @@ let rec intbool_reverse = ()
  vrednosti. Funkcija je repno rekurzivna in ohranja vrstni red elementov.
 [*----------------------------------------------------------------------------*)
 
-let rec intbool_separate = ()
+let rec intbool_separate ib_list = 
+  let rec aux acci accb = function
+    | Prazen -> (List.rev acci, List.rev accb)
+    | Il (i, tail) -> aux (i :: acci) accb tail
+    | Bl (b, tail) -> aux acci (b :: accb) tail
+  in
+  aux [] [] ib_list
 
 (*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=*]
  Določeni ste bili za vzdrževalca baze podatkov za svetovno priznano čarodejsko
@@ -98,7 +145,15 @@ let rec intbool_separate = ()
  [specialisation], ki loči med temi zaposlitvami.
 [*----------------------------------------------------------------------------*)
 
+type magic =
+  | Fire
+  | Frost
+  | Arcane
 
+type specialisation =
+  | Historian
+  | Teacher
+  | Researcher
 
 (*----------------------------------------------------------------------------*]
  Vsak od čarodejev začne kot začetnik, nato na neki točki postane študent,
@@ -115,7 +170,14 @@ let rec intbool_separate = ()
  - : wizard = {name = "Matija"; status = Employed (Fire, Teacher)}
 [*----------------------------------------------------------------------------*)
 
+type status =
+  | Newbie
+  | Student of magic * int
+  | Employed of magic * specialisation
 
+type wizard = {name : string; status : status};;
+
+let profesor = {name = "Matija"; status = Employed (Fire, Teacher)};;
 
 (*----------------------------------------------------------------------------*]
  Želimo prešteti koliko uporabnikov posamezne od vrst magije imamo na akademiji.
@@ -128,7 +190,16 @@ let rec intbool_separate = ()
  - : magic_counter = {fire = 1; frost = 1; arcane = 2}
 [*----------------------------------------------------------------------------*)
 
+type magic_counter = {fire : int; frost : int; arcane : int}
 
+let update counter = function
+  | Fire -> {counter with fire = counter.fire + 1}
+  | Frost -> {counter with frost = counter.frost + 1}
+  | Arcane -> {counter with arcane = counter.arcane + 1}
+(*let update {fire;frost;arcane} = function
+  | Fire -> {fire = fire + 1; frost; arcane}
+  | Frost -> {fire = fire; frost = frost + 1; arcane}
+  | Arcane -> {fire = fire; frost; arcane = arcane + 1}*)
 
 (*----------------------------------------------------------------------------*]
  Funkcija [count_magic] sprejme seznam čarodejev in vrne števec uporabnikov
@@ -138,7 +209,16 @@ let rec intbool_separate = ()
  - : magic_counter = {fire = 3; frost = 0; arcane = 0}
 [*----------------------------------------------------------------------------*)
 
-let rec count_magic = ()
+let rec count_magic l = 
+  let rec aux counter = function
+    | [] -> counter
+    | w :: tail ->
+      match w.status with
+      | Newbie -> aux counter tail
+      | Student (magic, _) | Employed (magic, _) ->
+          aux (update counter magic) tail
+  in
+  aux {fire = 0; frost = 0; arcane = 0} l
 
 (*----------------------------------------------------------------------------*]
  Želimo poiskati primernega kandidata za delovni razpis. Študent lahko postane
@@ -154,4 +234,17 @@ let rec count_magic = ()
  - : string option = Some "Jaina"
 [*----------------------------------------------------------------------------*)
 
-let rec find_candidate = ()
+let jaina = {name = "Jaina"; status = Student (Frost, 4)};;
+
+let specialisation_to_years = function
+  | Historian -> 3
+  | Researcher -> 4
+  | Teacher -> 5
+
+let rec find_candidate magic specialisation = function
+  | [] -> None
+  | w :: tail -> match w.status with
+    | Student (magic, stlet) ->
+        if specialisation_to_years specialisation <= stlet then Some w.name
+        else find_candidate magic specialisation tail
+    | _ -> find_candidate magic specialisation tail

@@ -9,6 +9,12 @@
  - : bool = true
 [*----------------------------------------------------------------------------*)
 
+let bst_of_list =
+  let rec aux acc = function
+  | [] -> acc
+  | f :: tail -> aux (insert f acc) tail
+  in
+  aux Leaf
 
 (*----------------------------------------------------------------------------*]
  Funkcija [tree_sort] uredi seznam s pomočjo pretvorbe v bst in nato nazaj
@@ -20,6 +26,7 @@
  - : string list = ["a"; "b"; "c"; "d"; "e"; "f"]
 [*----------------------------------------------------------------------------*)
 
+let tree_sort lst = lst |> bst_of_list |> list_of_tree
 
 (*----------------------------------------------------------------------------*]
  Funkcija [follow directions tree] tipa [direction list -> 'a tree -> 'a option]
@@ -32,6 +39,21 @@
  # follow [Right; Left; Right; Right] test_tree;;
  - : int option = None
 [*----------------------------------------------------------------------------*)
+
+type direction =
+  | Left
+  | Right
+
+let rec follow dlst = match dlst with
+  | [] -> let i (Node{v=v;_}) = Some v in i
+  | Left :: tail -> begin
+    function
+    | Leaf | Node{l=Leaf;_} -> None
+    | Node{l=l;_} -> follow tail l
+  end
+  | Right :: tail -> function
+    | Leaf | Node{r=Leaf;_} -> None
+    | Node{r=r;_} -> follow tail r
 
 
 (*----------------------------------------------------------------------------*]
@@ -46,6 +68,10 @@
  Some (Node (Node (Node (Empty, 0, Empty), 2, Empty), 5, Empty))
 [*----------------------------------------------------------------------------*)
 
+let rec prune dir = function
+  | Leaf -> None
+  | Node n when n.v = v -> Some (Node n)
+  | Node n when n.v = v -> Some (Node n)
 
 (*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=*]
  PHANTOM TREES
